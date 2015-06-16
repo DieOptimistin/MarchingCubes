@@ -155,7 +155,7 @@ void Isosurface::generateObject()
 						cell.val[i] = scalarField.at(index);
 
 						//generate a look up index for this specific edge intersection combination
-						if (cell.val[i] < mTargetValue)
+						if (cell.val[i] <= mTargetValue)
 							cell.iFlagIndex |= 1 << i;
 					}
 
@@ -236,12 +236,6 @@ void Isosurface::Triangulate(Cell &cell, Triangle *triangles, int *nTriangles)
 			int p1 = edge[0];
 			int p2 = edge[1];
 
-			//todo might not be important to clamp?
-			if (cell.val[p1] > mTargetValue)
-				cell.val[p1] = mTargetValue;
-
-			if (cell.val[p2] > mTargetValue)
-				cell.val[p2] = mTargetValue;
 			//find the approx intersection point by linear interpolation between the two edges and the density value
 			//asEdgeVertex[iEdge] = cell.p[p1] + (cell.p[p2] - cell.p[p1]) * cell.val[p1] / (cell.val[p2] + cell.val[p1]);
 			float length = cell.val[p1] / (cell.val[p2] + cell.val[p1]);
@@ -322,7 +316,6 @@ void Isosurface::getNormal(const Ogre::Vector3 &vertex, Ogre::Vector3 &normal) c
 
 /* calculates the scalar value of a given absolute point
 * therefore the distance to all skeleton nodes is taken into account.
-* You can choose between different blending functions @see init(...)
 *
 * @param pos the absolute position for that the isovalue will be calculates
 * @return the scalar value [0 .. Infinity]
@@ -336,18 +329,15 @@ float Isosurface::IsoValue(const Ogre::Vector3 &pos) const
 	{
 		SkeletonNode *node = mSkeleton.at(i);
 
-		const float &d(node->radius);
-		const float &dist(node->getDistanceTo(pos));
-		const float &r(dist / (node->radius));
+		const float &d(node->radius * 10);
+		const float &r(node->getDistanceTo(pos) / (node->radius));
 
-
-		if (r <= d)
+		if (r <= 1)
 		{
-			potential += Ogre::Math::Pow(r / d - 1, 4);
+			potential += (Ogre::Math::Pow(r, 4) - 2 * r*r + 1) / (1 + d* r * r);
 		}
-		else {
-			potential += 1 / (dist*dist);
-		}
+
+		break;
 	}
 
 	return potential;
